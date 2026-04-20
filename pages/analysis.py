@@ -3,146 +3,125 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# ---------- 1. Professional Configuration ----------
-st.set_page_config(
-    page_title="LuxeStay Executive Intelligence",
-    page_icon="💎",
-    layout="wide"
-)
+# ---------- 1. Configuration ----------
+st.set_page_config(page_title="Hotel Business Intelligence", layout="wide")
 
-# Advanced CSS: Glassmorphism and "Heavy" UI Contrast
+# Custom CSS for "Question Cards"
 st.markdown("""
     <style>
-    /* Card-like containers for metrics */
-    div[data-testid="stMetric"] {
+    .question-box {
+        background-color: #f1f5f9;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #1E3A8A;
+        margin-bottom: 10px;
+    }
+    .answer-box {
         background-color: #ffffff;
-        border: 1px solid #e6e9ef;
-        padding: 15px 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    /* Increase weight of metric values */
-    [data-testid="stMetricValue"] {
-        font-weight: 800 !important;
-        color: #1E3A8A !important;
-    }
-    /* Custom Sidebar styling */
-    section[data-testid="stSidebar"] {
-        background-color: #f8fafc;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv("hotel_booking_cleaned.csv")
-        month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December']
-        df['arrival_date_month'] = pd.Categorical(df['arrival_date_month'], categories=month_order, ordered=True)
-        
-        if 'revenue' not in df.columns:
-            df['revenue'] = df['adr'] * (df['stays_in_weekend_nights'] + df['stays_in_week_nights'])
-        return df
-    except Exception as e:
-        st.error(f"Data Load Error: {e}")
-        return pd.DataFrame()
+    df = pd.read_csv("hotel_booking_cleaned.csv")
+    month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
+                   'July', 'August', 'September', 'October', 'November', 'December']
+    df['arrival_date_month'] = pd.Categorical(df['arrival_date_month'], categories=month_order, ordered=True)
+    if 'revenue' not in df.columns:
+        df['revenue'] = df['adr'] * (df['stays_in_weekend_nights'] + df['stays_in_week_nights'])
+    return df
 
-df_raw = load_data()
+df = load_data()
 
-# ---------- 2. Sidebar Filters (Control Center) ----------
-with st.sidebar:
-    st.title("💎 LuxeStay Control")
-    st.markdown("---")
-    
-    # Dynamic Filtering
-    hotel_type = st.multiselect("Property Portfolio", options=df_raw['hotel'].unique(), default=df_raw['hotel'].unique())
-    year_filter = st.multiselect("Fiscal Year", options=sorted(df_raw['arrival_date_year'].unique()), default=sorted(df_raw['arrival_date_year'].unique()))
-    
-    st.markdown("---")
-    st.info("💡 **Tip:** Adjust filters to see how specific segments impact overall revenue.")
-
-# Apply Sidebar Filters
-df = df_raw[(df_raw['hotel'].isin(hotel_type)) & (df_raw['arrival_date_year'].isin(year_filter))]
-
-# ---------- 3. Header & Core Metrics ----------
-st.title("🏨 Hotel Business Intelligence")
-st.markdown(f"Currently analyzing **{len(df):,}** bookings across **{len(hotel_type)}** properties.")
-
-# Top KPI Row with context
-m1, m2, m3, m4 = st.columns(4)
-total_rev = df['revenue'].sum()
-avg_adr = df['adr'].mean()
-cancel_rate = df['is_canceled'].mean() * 100
-
-m1.metric("Gross Revenue", f"${total_rev/1e6:.2f}M", delta="4.2% vs LY")
-m2.metric("Avg Daily Rate", f"${avg_adr:.2f}", delta="2.1%")
-m3.metric("Cancellation Risk", f"{cancel_rate:.1f}%", delta="-0.8%", delta_color="inverse")
-m4.metric("Active Occupancy", f"{len(df[df['is_canceled']==0]):,}", help="Bookings excluding cancellations")
-
+# ---------- Header ----------
+st.title("🔍 Strategic Question & Answer Analysis")
+st.markdown("### Translating Data into Operational Decisions")
 st.divider()
 
-# ---------- 4. Enhanced Visualizations ----------
+# ---------- Question 1 ----------
+st.markdown('<div class="question-box"><b>QUESTION 1:</b> Which months provide the highest profit margin vs. booking volume?</div>', unsafe_allow_html=True)
 
-# --- SECTION 1: Dual-Axis Demand & Revenue ---
-st.subheader("1️⃣ Booking Momentum vs. Revenue Performance")
-col1, col2 = st.columns([3, 1])
+q1_col1, q1_col2 = st.columns([2, 1])
 
-with col1:
-    # Grouping for multi-axis
-    res = df.groupby('arrival_date_month', observed=False).agg({'revenue': 'sum', 'hotel': 'count'}).reset_index()
-    
+with q1_col1:
+    # Analysis: Comparing ADR (Profitability) vs Count (Volume)
+    res = df.groupby('arrival_date_month', observed=False).agg({'adr': 'mean', 'hotel': 'count'}).reset_index()
     fig1 = go.Figure()
-    # Revenue Bars
-    fig1.add_trace(go.Bar(x=res['arrival_date_month'], y=res['revenue'], name='Revenue', marker_color='#3B82F6', opacity=0.8))
-    # Booking Line
-    fig1.add_trace(go.Scatter(x=res['arrival_date_month'], y=res['hotel'], name='Booking Count', yaxis='y2', line=dict(color='#EF4444', width=3)))
-
+    fig1.add_trace(go.Bar(x=res['arrival_date_month'], y=res['adr'], name='Avg Daily Rate ($)', marker_color='#0ea5e9'))
+    fig1.add_trace(go.Scatter(x=res['arrival_date_month'], y=res['hotel'], name='Volume', yaxis='y2', line=dict(color='#f43f5e', width=3)))
+    
     fig1.update_layout(
         template="plotly_white",
-        yaxis=dict(title="Revenue ($)"),
-        yaxis2=dict(title="Booking Count", overlaying='y', side='right'),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(t=30, b=0)
+        yaxis=dict(title="Profitability (ADR)"),
+        yaxis2=dict(title="Volume (Bookings)", overlaying='y', side='right'),
+        height=400, margin=dict(t=20, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1)
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-with col2:
-    st.markdown("#### Strategic Insights")
-    st.info("**Revenue Lag:** Some months show high volume but lower relative revenue. This indicates a potential under-pricing of rooms during mid-week transitions.")
-    st.success("**Recommendation:** Introduce a 10% premium on 'Transient' segment bookings during the mid-week peak.")
+with q1_col2:
+    st.markdown('<div class="answer-box">', unsafe_allow_html=True)
+    st.write("**Data Answer:**")
+    st.write("August and July show the strongest alignment of high ADR and high Volume.")
+    st.write("**Operational Decision:**")
+    st.success("Maximize 'Length of Stay' restrictions during August to ensure high-value rooms aren't occupied by one-night stays.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.divider()
 
-# --- SECTION 2: Risk & Segmentation ---
-st.subheader("2️⃣ Market Segmentation & Risk Profiling")
-col3, col4 = st.columns([1, 1])
+# ---------- Question 2 ----------
+st.markdown('<div class="question-box"><b>QUESTION 2:</b> Are we losing revenue due to outdated cancellation policies?</div>', unsafe_allow_html=True)
 
-with col3:
-    st.markdown("**Cancellation Risk by Deposit Type**")
-    cancel_data = df.groupby("deposit_type")["is_canceled"].mean().reset_index()
+q2_col1, q2_col2 = st.columns([1, 2])
+
+with q2_col1:
+    st.markdown('<div class="answer-box">', unsafe_allow_html=True)
+    st.write("**Data Answer:**")
+    # Finding the specific cancellation rate for 'No Deposit' bookings
+    no_dep_rate = df[df['deposit_type'] == 'No Deposit']['is_canceled'].mean() * 100
+    st.write(f"Bookings with **No Deposit** have a **{no_dep_rate:.1f}%** cancellation rate.")
+    st.write("**Operational Decision:**")
+    st.error("Eliminate 'No Deposit' options for groups larger than 5 people or for bookings made more than 90 days in advance.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with q2_col2:
+    cancel_map = df.groupby(['deposit_type', 'customer_type'])['is_canceled'].mean().reset_index()
     fig2 = px.bar(
-        cancel_data.sort_values("is_canceled"),
-        y="deposit_type", x="is_canceled",
-        orientation='h',
-        color="is_canceled",
-        color_continuous_scale="Reds",
+        cancel_map, x="customer_type", y="is_canceled", color="deposit_type",
+        barmode="group", title="Risk Probability by Policy and Segment",
+        color_discrete_sequence=px.colors.qualitative.Prism,
         template="plotly_white"
     )
-    fig2.update_layout(showlegend=False, height=350)
     st.plotly_chart(fig2, use_container_width=True)
 
-with col4:
-    st.markdown("**ADR Distribution by Customer Type**")
-    fig3 = px.box(
-        df, x="customer_type", y="adr",
-        color="customer_type",
-        points=False, # cleaner look for executives
-        template="plotly_white"
+st.divider()
+
+# ---------- Question 3 ----------
+st.markdown('<div class="question-box"><b>QUESTION 3:</b> Which customer segment is the most "expensive" to acquire based on lead time?</div>', unsafe_allow_html=True)
+
+q3_col1, q3_col2 = st.columns([2, 1])
+
+with q3_col1:
+    # Analyzing Lead Time vs ADR
+    fig3 = px.scatter(
+        df.sample(2000), x="lead_time", y="adr", color="customer_type",
+        size="total_of_special_requests", hover_data=['hotel'],
+        title="Lead Time vs. Price Paid (Sampled Data)",
+        template="plotly_white", opacity=0.6
     )
-    fig3.update_yaxes(range=[0, df['adr'].quantile(0.98)])
-    fig3.update_layout(showlegend=False, height=350)
     st.plotly_chart(fig3, use_container_width=True)
 
-st.divider()
-st.caption("LuxeStay Analytics Engine | Data Refresh: 2026-04-20")
+with q3_col2:
+    st.markdown('<div class="answer-box">', unsafe_allow_html=True)
+    st.write("**Data Answer:**")
+    st.write("Transient customers book with shorter lead times but pay significantly higher premiums.")
+    st.write("**Operational Decision:**")
+    st.warning("Keep a 10% inventory buffer for 'last-minute' transient bookings rather than filling the hotel with low-ADR long-lead 'Groups'.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.caption("LuxeStay Q&A Intelligence Engine | Confidential 2026")
