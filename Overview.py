@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 # ---------- 1. Configuration & Branding ----------
 st.set_page_config(
-    page_title="LuxeStay Analytics",
+    page_title="Hotel Business Intelligence",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -84,7 +84,7 @@ df = df_raw[(df_raw["hotel"].isin(hotel_choice)) & (df_raw["arrival_date_year"].
 # ---------- 4. Executive Summary ----------
 c_title, c_health = st.columns([3, 1])
 with c_title:
-    st.title("Business Intelligence Portfolio")
+    st.title("Hotel Business Intelligence")
     st.write(f"Displaying performance metrics for {', '.join(map(str, year_choice))}")
 
 with c_health:
